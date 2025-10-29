@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>灵数缘 · 私人号码分析</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#F0C7D0">
+  <style>
+    body {
+      font-family: "Helvetica Neue", sans-serif;
+      background: linear-gradient(180deg,#FFF8F6,#F0C7D0);
+      color: #4a3f41;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      padding: 20px;
+      max-width: 400px;
+      margin: 40px auto;
+    }
+    input {
+      width: 90%;
+      padding: 8px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #D89CAE;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 10px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    #result {
+      text-align: left;
+      margin-top: 20px;
+      background-color: #fffafc;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>🌷 灵数缘 · 私人号码分析</h2>
+  <div class="card">
+    <input id="name" placeholder="姓名（可选）"><br>
+    <input id="birthday" placeholder="出生日期 YYYY-MM-DD"><br>
+    <input id="number" placeholder="要分析的号码（只需数字）"><br>
+    <button onclick="analyze()">开始分析</button>
+    <button onclick="recommend()">推荐数字</button>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const DIGIT_ELEMENTS = {"1":"水","2":"木","3":"木","4":"火","5":"土","6":"金","7":"金","8":"土","9":"火","0":"水"};
+    const GENERATE_MAP = {"木":"火","火":"土","土":"金","金":"水","水":"木"};
+    const CONTROL_MAP  = {"木":"土","土":"水","水":"火","火":"金","金":"木"};
+
+    function fake_birth_five_elements(birth){
+      try{
+        const [y,m,d]=birth.split("-").map(Number);
+        const total=y+m+d;
+        const count={"金":0,"木":0,"水":0,"火":0,"土":0};
+        for(const ch of String(total)){
+          const e=DIGIT_ELEMENTS[ch];
+          if(e) count[e]++;
+        }
+        if(Object.values(count).every(v=>v===0)) count["土"]=1;
+        return count;
+      }catch(e){return {"金":0,"木":0,"水":0,"火":0,"土":0};}
+    }
+
+    function analyze_number(num,birth){
+      const count={"金":0,"木":0,"水":0,"火":0,"土":0};
+      for(const ch of num){const e=DIGIT_ELEMENTS[ch]; if(e) count[e]++;}
+      let score=70,notes=[];
+      for(const el of Object.keys(count)){
+        if(birth[el]===0){
+          for(const n_el of Object.keys(count)){
+            if(GENERATE_MAP[n_el]===el && count[n_el]>0){
+              score+=10;notes.push(`${n_el}生${el}，可补足缺的${el}。`);
+            }
+            if(CONTROL_MAP[n_el]===el && count[n_el]>0){
+              score-=10;notes.push(`${n_el}克${el}，有少许冲克。`);
+            }
+          }
+        }
+      }
+      if(Object.values(count).filter(v=>v>0).length>=3){score+=5;notes.push("号码五行较为多元，能量流动顺畅。");}
+      score=Math.max(30,Math.min(99,score));
+      const type=score>=85?"旺财·贵人型":score>=75?"助运·稳财型":score>=60?"平稳需留意":"不太契合";
+      return {count,score,notes,type};
+    }
+
+    function analyze(){
+      const name=document.getElementById("name").value;
+      const birth=document.getElementById("birthday").value;
+      const num=document.getElementById("number").value.replace(/\D/g,"");
+      if(!birth){alert("请填写出生日期");return;}
+      if(!num){alert("请输入号码");return;}
+      const birth_el=fake_birth_five_elements(birth);
+      const res=analyze_number(num,birth_el);
+      const r=document.getElementById("result");
+      let txt=`🌿 灵数缘 · 分析报告\n`;
+      if(name) txt+=`姓名：${name}\n`;
+      txt+=`生日：${birth}\n号码：${num}\n\n`;
+      txt+=`命主五行：${JSON.stringify(birth_el)}\n号码五行：${JSON.stringify(res.count)}\n\n`;
+      txt+=`匹配分数：${res.score} 分 · 类型：${res.type}\n\n`;
+      if(res.notes.length) txt+=`顾问说明：\n${res.notes.map(n=>"• "+n).join("\n")}\n`;
+      else txt+=`顾问说明：能量平衡良好。\n`;
+      txt+=`\n✨ 建议：${res.score>=85?"非常契合，可长期使用。":res.score>=70?"平衡度佳，可强化补缺数字。":"部分冲克，建议调整号码。"}\n`;
+      r.textContent=txt;
+    }
+
+    function recommend(){
+      const birth=document.getElementById("birthday").value;
+      if(!birth){alert("请填写出生日期");return;}
+      const birth_el=fake_birth_five_elements(birth);
+      const map={"金":["6","7"],"木":["2","3"],"水":["1","0"],"火":["4","9"],"土":["5","8"]};
+      let rec=[];
+      for(const el in birth_el) if(birth_el[el]===0) rec=rec.concat(map[el]);
+      if(rec.length===0) rec=["2","6","8"];
+      document.getElementById("result").textContent=`推荐补缺数字：${rec.join("，")}`;
+    }
+
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('service-worker.js');
+    }
+  </script>
+</body>
+</html>
